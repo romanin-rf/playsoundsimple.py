@@ -1,6 +1,5 @@
-playsoundsimple
-===============
-
+playsoundsimple.py
+==================
 Description
 -----------
 
@@ -11,6 +10,4 @@ through the ``mutagen``.
 Installation
 ------------ 
 Since I have not yet uploaded the library to ``pypi.org``, then you have to enter a direct link to the release:
-
-::
-    pip install playsoundsimple
+``pip install playsoundsimple``
