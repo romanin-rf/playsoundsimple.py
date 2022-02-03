@@ -13,7 +13,7 @@ setuptools.setup(
     long_description=open(
         os.path.join(
             os.path.dirname(__file__),
-            'README.md'
+            'README.rst'
         )
     ).read(),
     author='ProgrammerFromParlament',
