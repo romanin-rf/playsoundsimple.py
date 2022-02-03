@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name='playsoundsimple.py',
-    version='0.1',
+    version='0.1.1',
     description='A simple library for playing sound files.',
     keywords='playsoundsimple',
     packages=setuptools.find_packages(),
