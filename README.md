@@ -6,7 +6,7 @@ Playing goes through the `pygame`, and getting information through the `mutagen`
 
 ## Installation
 ```
-pip install playsoundsimple.py
+pip install playsoundsimple.py mutagen pygame
 ```
 
 ## More
