@@ -94,7 +94,7 @@ class Sound:
             raise TypeError(f"Type of argument 'fp', cannot be '{type(fp)}'.")
         path_sound_fonts = kwargs.get("path_sound_fonts", Units.SOUND_FONTS_PATH)
         npath = mkstemp(suffix=".wav")[1]
-        subprocess.check_output([Units.SOUND_FONTS_PATH, "-ni", path_sound_fonts, path, "-F", npath])
+        subprocess.check_output([Units.FLUID_SYNTH_PATH, "-ni", path_sound_fonts, path, "-F", npath])
         if is_temp:
             os.remove(path)
         return Sound(npath, **{"is_temp": True, **kwargs})
