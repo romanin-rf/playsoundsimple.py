@@ -47,27 +47,58 @@ class Sound:
             self._SOUND = sf.SoundFile(fp)
         else:
             raise TypeError(f"Type of argument 'fp', cannot be '{type(fp)}'.")
-        self._PATH = self._SOUND.name
-        self._S: float = self._SOUND.samplerate
-        self._BS: int = round(self._S * 0.0022675736961451248)
-        self._DT: str = kwargs.get("dtype", "float32")
         self._DID: Optional[int] = kwargs.get("device_id", None)
-        self._D: float = self._SOUND.frames / self._S
-        self._POS: int = 0
+        self._DT: str = kwargs.get("dtype", "float32")
         self._V: float = kwargs.get("volume", 1.0)
+        self._POS: int = 0
         self._P = False
         self._PE = False
 
+        self._PATH = self._SOUND.name
+        self._S: int = self._SOUND.samplerate
+        self._C: int = self._SOUND.channels
+        self._D: float = self._SOUND.frames / self._S
+        self._BD: int = Units.DTYPE_EQUALENT[self._DT]
+        self._BITRATE: int = self._S * self._BD * self._C
+        self._BS: int = self._S
+    
+    @property
+    def playing(self) -> bool: return self._P
+    @property
+    def paused(self) -> bool: return self._PE
+    @property
+    def samplerate(self) -> int: return self._S
+    @property
+    def duration(self) -> float: return self._D
+    @property
+    def name(self) -> str: return self._PATH
+    @property
+    def bit_depth(self) -> int: return self._BD
+    @property
+    def bitrate(self) -> int: return self._BITRATE
+    @property
+    def channels(self) -> int: return self._C
+
     def __str__(self) -> str:
         return \
-            f"{self.__class__.__name__}(name='{self._PATH}', samplerate={self._S}, duration={self._D}, playing={self._P}, paused={self._PE})"
+            '{}(name={}, samplerate={}, channels={}, bit_depth={}, bitrate={}, duration={}, playing={}, paused={})'\
+                .format(
+                    self.__class__.__name__,
+                    self._PATH.__repr__(),
+                    self._S.__repr__(),
+                    self._C.__repr__(),
+                    self._BD.__repr__(),
+                    self._BITRATE.__repr__(),
+                    self._D.__repr__(),
+                    self._P.__repr__(),
+                    self._PE.__repr__()
+                )
 
     def __repr__(self) -> str:
         return self.__str__()
 
     def __del__(self) -> None:
-        self._P = False
-        self._PE = False
+        self._P, self._PE = False, False
         self._SOUND.close()
         if self._IS_TP:
             try:
@@ -92,70 +123,38 @@ class Sound:
             is_temp = False
         else:
             raise TypeError(f"Type of argument 'fp', cannot be '{type(fp)}'.")
-        path_sound_fonts = kwargs.get("path_sound_fonts", Units.SOUND_FONTS_PATH)
-        npath = mkstemp(suffix=".wav")[1]
+        path_sound_fonts, npath = kwargs.get("path_sound_fonts", Units.SOUND_FONTS_PATH), mkstemp(suffix=".wav")[1]
         subprocess.check_output([Units.FLUID_SYNTH_PATH, "-ni", path_sound_fonts, path, "-F", npath])
-        if is_temp:
-            os.remove(path)
+        if is_temp: os.remove(path)
         return Sound(npath, **{"is_temp": True, **kwargs})
-
-    @property
-    def playing(self) -> bool:
-        return self._P
-
-    @property
-    def paused(self) -> bool:
-        return self._PE
-
-    @property
-    def samplerate(self) -> float:
-        return self._S
-
-    @property
-    def duration(self) -> float:
-        return self._D
-
-    @property
-    def name(self) -> str:
-        return self._PATH
 
     def _check_pause(self):
         while self._PE:
             sd.sleep(1)
 
-    def get_pos(self) -> float:
-        return self._POS / self._S
+    def get_pos(self) -> float: return self._POS / self._S
 
     def set_pos(self, value: float) -> None:
         if 0.0 <= value <= self._D:
             self._POS = int(value * self._S)
             self._SOUND.seek(self._POS)
 
-    def get_volume(self) -> float:
-        return self._V
-
-    def set_volume(self, value: float) -> None:
-        self._V = value
+    def get_volume(self) -> float: return self._V
+    def set_volume(self, value: float) -> None: self._V = value
 
     def _play(self, mode: int) -> None:
-        with sd.OutputStream(self._S, dtype=self._DT, device=self._DID) as output_stream:
+        with sd.OutputStream(self._S, dtype=self._DT, device=self._DID, channels=self._SOUND.channels) as output_stream:
             self._SOUND.seek(self._POS)
             while (mode != 0) and (self._P):
                 while self._P:
                     self._check_pause()
                     if len(data := self._SOUND.read(self._BS, self._DT)) != 0:
-                        output_stream.write(data*self._V)
-                        self._POS += self._BS
-                    else:
-                        break
-                self._SOUND.seek(0)
-                self._POS = 0
-                mode -= 1
-        self._SOUND.seek(0)
-        self._POS = 0
-        self._P = False
-
-    def pause(self):
+                        output_stream.write(data * self._V) ; self._POS += self._BS
+                    else: break
+                self._SOUND.seek(0) ; self._POS, mode = 0, mode-1
+        self._SOUND.seek(0) ; self._POS, self._P = 0, False
+    
+    def pause(self): 
         if self._P:
             self._PE = True
 
@@ -170,6 +169,5 @@ class Sound:
 
     def stop(self) -> None:
         if self._P:
-            self._P = False
-            self._PE = False
+            self._P, self._PE = False, False
             sd.stop()
