@@ -1,6 +1,6 @@
 # playsoundsimple.py
 ## Description
-Library for working with sound files of the format: `.ogg`, `.mp3`, `.wav`.
+Library for working with sound files of the format: `.ogg`, `.mp3`, `.wav`, `.midi`.
 
 ## Installation
 ```
