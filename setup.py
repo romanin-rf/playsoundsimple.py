@@ -20,7 +20,7 @@ def globalizer(dirpath: str) -> list:
 # * Ну, setup
 setuptools.setup(
     name='playsoundsimple.py',
-    version='0.5.5',
+    version='0.6.0',
     description='A simple library for playing sound files',
     keywords='playsoundsimple',
     packages=setuptools.find_packages(),
@@ -30,12 +30,12 @@ setuptools.setup(
 	long_description_content_type="text/markdown",
     package_data={
         "playsoundsimple": globalizer(
-            os.path.join(os.path.dirname(__file__), "playsoundsimple", "data")
+            os.path.join(os.path.dirname(__file__), "playsoundsimple")
         )
     },
 	include_package_data=True,
     author='romanin-rf',
     license='MIT',
-    install_requires=["sounddevice", "soundfile"],
-    setup_requires=["sounddevice", "soundfile"]
+    install_requires=["sounddevice", "soundfile", "mutagen"],
+    setup_requires=["sounddevice", "soundfile", "mutagen"]
 )

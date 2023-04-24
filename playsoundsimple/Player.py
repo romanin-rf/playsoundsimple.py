@@ -1,17 +1,19 @@
 import os
 import io
-import sounddevice as sd
-import soundfile as sf
+import time
 import subprocess
 from threading import Thread
 from tempfile import mkstemp
 from dataclasses import dataclass
-from typing import Optional, Union
-# * Local Imports
-try:
-    from . import Units
-except:
-    import Units
+# > Sound Works
+import sounddevice as sd
+import soundfile as sf
+from mutagen import File, FileType
+# > Typing
+from typing import Optional, Union, Dict, Any
+# > Local Imports
+try: from . import Units
+except: import Units
 
 # ! Other
 @dataclass
@@ -32,6 +34,12 @@ def get_devices():
             )
     return dl
 
+def get_icon_data(mutagen_class: FileType) -> Optional[bytes]:
+    try: return mutagen_class["APIC:"].data
+    except:
+        try: return mutagen_class["APIC"].data
+        except: pass
+
 # ! Classes
 class Sound:
     def __init__(self, fp, **kwargs) -> None:
@@ -47,6 +55,9 @@ class Sound:
             self._SOUND = sf.SoundFile(fp)
         else:
             raise TypeError(f"Type of argument 'fp', cannot be '{type(fp)}'.")
+        
+        self._MUTAGEN_FILE: FileType = File(os.path.abspath(self._SOUND.name))
+        
         self._DID: Optional[int] = kwargs.get("device_id", None)
         self._DT: str = kwargs.get("dtype", "float32")
         self._V: float = kwargs.get("volume", 1.0)
@@ -58,9 +69,12 @@ class Sound:
         self._S: int = self._SOUND.samplerate
         self._C: int = self._SOUND.channels
         self._D: float = self._SOUND.frames / self._S
-        self._BD: int = Units.DTYPE_EQUALENT[self._DT]
-        self._BITRATE: int = self._S * self._BD * self._C
+        self._BITRATE: Optional[int] = self._MUTAGEN_FILE.info.bitrate
+        self._BD: int = round(self._BITRATE / (self._S * self._C))
         self._BS: int = self._S
+        
+        self._ICON_DATA = get_icon_data(self._MUTAGEN_FILE)
+        self._INFO: Dict[str, Any] = self._SOUND.copy_metadata()
     
     @property
     def playing(self) -> bool: return self._P
@@ -78,6 +92,14 @@ class Sound:
     def bitrate(self) -> int: return self._BITRATE
     @property
     def channels(self) -> int: return self._C
+    @property
+    def title(self) -> Optional[str]: return self._INFO.get("title", None)
+    @property
+    def artist(self) -> Optional[str]: return self._INFO.get("artist", None)
+    @property
+    def album(self) -> Optional[str]: return self._INFO.get("album", None)
+    @property
+    def icon_data(self) -> Optional[bytes]: return self._ICON_DATA
 
     def __str__(self) -> str:
         return \
@@ -101,16 +123,13 @@ class Sound:
         self._P, self._PE = False, False
         self._SOUND.close()
         if self._IS_TP:
-            try:
-                os.remove(self._PATH)
-            except:
-                pass
+            try: os.remove(self._PATH)
+            except: pass
 
     @staticmethod
     def from_midi(fp, **kwargs):
         if isinstance(fp, str):
-            path = fp
-            is_temp = False
+            path, is_temp = fp, False
         elif isinstance(fp, bytes):
             path = mkstemp(suffix=".mid")[1]
             with open(path, "wb") as midi_file_temp:
@@ -123,9 +142,12 @@ class Sound:
             is_temp = False
         else:
             raise TypeError(f"Type of argument 'fp', cannot be '{type(fp)}'.")
+        
         path_sound_fonts, npath = kwargs.get("path_sound_fonts", Units.SOUND_FONTS_PATH), mkstemp(suffix=".wav")[1]
         subprocess.check_output([Units.FLUID_SYNTH_PATH, "-ni", path_sound_fonts, path, "-F", npath])
+        
         if is_temp: os.remove(path)
+        
         return Sound(npath, **{"is_temp": True, **kwargs})
 
     def _check_pause(self):
@@ -171,3 +193,6 @@ class Sound:
         if self._P:
             self._P, self._PE = False, False
             sd.stop()
+    
+    def wait(self) -> None:
+        while self.playing: time.sleep(0.01)
