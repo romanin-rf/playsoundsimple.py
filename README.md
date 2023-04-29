@@ -20,8 +20,7 @@ s = pss.Sound("main.wav")
 
 s.play(1)
 
-while s.planing:
-    time.sleep(0.1)
+s.wait()
 ```
 
 ## Author
