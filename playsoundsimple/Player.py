@@ -10,10 +10,10 @@ import sounddevice as sd
 import soundfile as sf
 from mutagen import File, FileType
 # > Typing
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Dict, Any, Tuple
 # > Local Imports
-try: from . import Units
-except: import Units
+from . import units
+from . import exceptions
 
 # ! Other
 @dataclass
@@ -22,7 +22,7 @@ class Device:
     device_id: int
     samplerate: float
 
-SOUND_FP = Union[str, bytes, io.BufferedReader]
+SoundFP = Union[str, bytes, io.BufferedReader, io.BytesIO]
 
 # ! Functions
 def get_devices():
@@ -40,22 +40,38 @@ def get_icon_data(mutagen_class: FileType) -> Optional[bytes]:
         try: return mutagen_class["APIC"].data
         except: pass
 
+def is_midi_file(filepath: str) -> bool:
+    with open(filepath, 'rb') as file:
+        return file.read(4) == b"MThd"
+
+def get_sound_filepath(fp: SoundFP, *, filetype: str=".bin") -> Tuple[Optional[str], bool]:
+    if isinstance(fp, str):
+        return fp, False
+    elif isinstance(fp, io.BufferedReader):
+        fp.close()
+        return fp.name, False
+    elif isinstance(fp, bytes):
+        path = mkstemp(suffix=filetype)[1]
+        with open(path, "wb") as file:
+            file.write(fp)
+        return path, True
+    elif isinstance(fp, io.BytesIO):
+        path = mkstemp(suffix=filetype)[1]
+        fp.seek(0)
+        with open(path, "wb") as file:
+            file.write(fp.read())
+        return path, True
+    return None, False
+
 # ! Classes
 class Sound:
-    def __init__(self, fp, **kwargs) -> None:
-        self._IS_TP = kwargs.get("is_temp", False)
-        if isinstance(fp, io.BufferedReader):
-            self._SOUND = sf.SoundFile(fp)
-        elif isinstance(fp, bytes):
-            path = mkstemp(suffix=".wav")[1]
-            with open(path, "wb") as file:
-                file.write(fp)
-            self._SOUND, self._IS_TP = sf.SoundFile(path), True
-        elif isinstance(fp, str):
-            self._SOUND = sf.SoundFile(fp)
-        else:
-            raise TypeError(f"Type of argument 'fp', cannot be '{type(fp)}'.")
+    def __init__(self, fp: SoundFP, **kwargs) -> None:
+        self._SOUND_PATH, self._TEMPED = get_sound_filepath(fp)
+        self._TEMPED = kwargs.get("is_temp", self._TEMPED)
         
+        if self._SOUND_PATH is None: raise exceptions.FileTypeError(fp)
+        
+        self._SOUND = sf.SoundFile(fp)
         self._MUTAGEN_FILE: FileType = File(os.path.abspath(self._SOUND.name))
         
         self._DID: Optional[int] = kwargs.get("device_id", None)
@@ -106,14 +122,14 @@ class Sound:
             '{}(name={}, samplerate={}, channels={}, bit_depth={}, bitrate={}, duration={}, playing={}, paused={})'\
                 .format(
                     self.__class__.__name__,
-                    self._PATH.__repr__(),
-                    self._S.__repr__(),
-                    self._C.__repr__(),
-                    self._BD.__repr__(),
-                    self._BITRATE.__repr__(),
-                    self._D.__repr__(),
-                    self._P.__repr__(),
-                    self._PE.__repr__()
+                    repr(self._PATH),
+                    repr(self._S),
+                    repr(self._C),
+                    repr(self._BD),
+                    repr(self._BITRATE),
+                    repr(self._D),
+                    repr(self._P),
+                    repr(self._PE)
                 )
 
     def __repr__(self) -> str:
@@ -121,38 +137,29 @@ class Sound:
 
     def __del__(self) -> None:
         self._P, self._PE = False, False
-        self._SOUND.close()
-        if self._IS_TP:
-            try: os.remove(self._PATH)
+        try: self._SOUND.close()
+        except: pass
+        if self._TEMPED:
+            try: os.remove(self._SOUND.name)
             except: pass
 
     @staticmethod
-    def from_midi(fp, **kwargs):
-        if isinstance(fp, str):
-            path, is_temp = fp, False
-        elif isinstance(fp, bytes):
-            path = mkstemp(suffix=".mid")[1]
-            with open(path, "wb") as midi_file_temp:
-                midi_file_temp.write(fp)
-            is_temp = True
-        elif isinstance(fp, io.BufferedReader):
-            path = mkstemp(suffix=".mid")[1]
-            with open(path, "wb") as midi_file_temp:
-                midi_file_temp.write(fp.read())
-            is_temp = False
-        else:
-            raise TypeError(f"Type of argument 'fp', cannot be '{type(fp)}'.")
+    def from_midi(fp: SoundFP, **kwargs):
+        path, is_temp = get_sound_filepath(fp, filetype=".midi")
         
-        path_sound_fonts, npath = kwargs.get("path_sound_fonts", Units.SOUND_FONTS_PATH), mkstemp(suffix=".wav")[1]
-        subprocess.check_output([Units.FLUID_SYNTH_PATH, "-ni", path_sound_fonts, path, "-F", npath])
+        if path is None: raise exceptions.FileTypeError(fp)
         
-        if is_temp: os.remove(path)
+        path_sound_fonts, npath = kwargs.get("path_sound_fonts", units.SOUND_FONTS_PATH), mkstemp(suffix=".wav")[1]
+        subprocess.check_output([units.FLUID_SYNTH_PATH, "-ni", path_sound_fonts, path, "-F", npath])
+        
+        if is_temp:
+            try: os.remove(path)
+            except: pass
         
         return Sound(npath, **{"is_temp": True, **kwargs})
 
     def _check_pause(self):
-        while self._PE:
-            sd.sleep(1)
+        while self._PE: sd.sleep(1)
 
     def get_pos(self) -> float: return self._POS / self._S
 
@@ -171,18 +178,17 @@ class Sound:
                 while self._P:
                     self._check_pause()
                     if len(data := self._SOUND.read(self._BS, self._DT)) != 0:
-                        output_stream.write(data * self._V) ; self._POS += self._BS
+                        output_stream.write(data * self._V)
+                        self._POS += self._BS
                     else: break
                 self._SOUND.seek(0) ; self._POS, mode = 0, mode-1
         self._SOUND.seek(0) ; self._POS, self._P = 0, False
     
     def pause(self): 
-        if self._P:
-            self._PE = True
+        if self._P: self._PE = True
 
     def unpause(self):
-        if self._PE:
-            self._PE = False
+        if self._PE: self._PE = False
 
     def play(self, mode: int = 1) -> None:
         if not self._P:

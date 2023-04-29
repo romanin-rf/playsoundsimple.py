@@ -1,1 +1,1 @@
-from .Player import Sound, SOUND_FP, get_devices
+from .player import Sound, SoundFP, get_devices, is_midi_file

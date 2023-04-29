@@ -1,6 +1,8 @@
-from io import BufferedReader
-from typing import overload, List, Union, Optional
+from io import BufferedReader, BytesIO
+from typing import overload, List, Optional, Union
 from dataclasses import dataclass
+
+SoundFP = Union[str, bytes, BufferedReader, BytesIO]
 
 @dataclass
 class Device:
@@ -8,9 +10,8 @@ class Device:
     device_id: int
     samplerate: float
 
-SOUND_FP = Union[str, bytes, BufferedReader]
-
 def get_devices() -> List[Device]: ...
+def is_midi_file(filepath: str) -> bool: ...
 
 class Sound:
     @overload
@@ -19,6 +20,8 @@ class Sound:
     def __init__(self, fp: bytes, **kwargs) -> None: ...
     @overload
     def __init__(self, fp: BufferedReader, **kwargs) -> None: ...
+    @overload
+    def __init__(self, fp: BytesIO, **kwargs) -> None: ...
 
     @overload
     @staticmethod
@@ -29,6 +32,9 @@ class Sound:
     @overload
     @staticmethod
     def from_midi(fp: BufferedReader, **kwargs) -> Sound: ...
+    @overload
+    @staticmethod
+    def from_midi(fp: BytesIO, **kwargs) -> Sound: ...
 
     @property
     def playing(self) -> bool: ...
