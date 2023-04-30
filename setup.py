@@ -36,6 +36,6 @@ setuptools.setup(
 	include_package_data=True,
     author='romanin-rf',
     license='MIT',
-    install_requires=["sounddevice", "soundfile", "mutagen"],
-    setup_requires=["sounddevice", "soundfile", "mutagen"]
+    install_requires=["sounddevice", "soundfile", "mutagen", "numpy"],
+    setup_requires=["sounddevice", "soundfile", "mutagen", "numpy"]
 )
