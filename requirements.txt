@@ -1,3 +1,4 @@
 sounddevice
 soundfile
 mutagen
+numpy
