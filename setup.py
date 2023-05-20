@@ -20,7 +20,7 @@ def globalizer(dirpath: str) -> list:
 # * Ну, setup
 setuptools.setup(
     name='playsoundsimple.py',
-    version='0.6.3',
+    version='0.7.0',
     description='A simple library for playing sound files',
     keywords='playsoundsimple',
     packages=setuptools.find_packages(),

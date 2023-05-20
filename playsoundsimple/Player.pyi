@@ -1,41 +1,112 @@
 from io import BufferedReader, BytesIO
-from typing import overload, List, Optional, Union
-from dataclasses import dataclass
+from typing import overload, List, Optional, Union, Tuple, Dict, Any
+from .units import SOUND_FONTS_PATH
 
 SoundFP = Union[str, bytes, BufferedReader, BytesIO]
 
-@dataclass
-class Device:
-    name: str
-    device_id: int
-    samplerate: float
-
-def get_devices() -> List[Device]: ...
+def get_hostapis() -> List[Dict[str, Any]]: ...
+def search_device(hostapi: str) -> int: ...
 def is_midi_file(filepath: str) -> bool: ...
+def get_sound_filepath(fp: SoundFP, *, filetype: str=".bin") -> Tuple[Optional[str], bool]: ...
+
 
 class Sound:
+    # * Init
     @overload
-    def __init__(self, fp: str, **kwargs) -> None: ...
+    def __init__(
+        self,
+        fp: str,
+        dtype: str="float32",
+        volume: float=1.0,
+        hostapi: Optional[str]=None,
+        device_id: Optional[int]=None,
+        is_temp: Optional[bool]=None,
+        **kwargs
+    ) -> None: ...
     @overload
-    def __init__(self, fp: bytes, **kwargs) -> None: ...
+    def __init__(
+        self,
+        fp: bytes,
+        dtype: str="float32",
+        volume: float=1.0,
+        hostapi: Optional[str]=None,
+        device_id: Optional[int]=None,
+        is_temp: Optional[bool]=None,
+        **kwargs
+    ) -> None: ...
     @overload
-    def __init__(self, fp: BufferedReader, **kwargs) -> None: ...
+    def __init__(
+        self,
+        fp: BufferedReader,
+        dtype: str="float32",
+        volume: float=1.0,
+        hostapi: Optional[str]=None,
+        device_id: Optional[int]=None,
+        is_temp: Optional[bool]=None,
+        **kwargs
+    ) -> None: ...
     @overload
-    def __init__(self, fp: BytesIO, **kwargs) -> None: ...
+    def __init__(
+        self, fp: BytesIO,
+        dtype: str="float32",
+        volume: float=1.0,
+        hostapi: Optional[str]=None,
+        device_id: Optional[int]=None,
+        is_temp: Optional[bool]=None,
+        **kwargs
+    ) -> None: ...
 
+    # * Init from MIDI
     @overload
     @staticmethod
-    def from_midi(fp: str, **kwargs) -> Sound: ...
+    def from_midi(
+        fp: str,
+        sound_fonts_path: str=SOUND_FONTS_PATH,
+        dtype: str="float32",
+        volume: float=1.0,
+        hostapi: Optional[str]=None,
+        device_id: Optional[int]=None,
+        is_temp: Optional[bool]=None,
+        **kwargs
+    ) -> Sound: ...
     @overload
     @staticmethod
-    def from_midi(fp: bytes, **kwargs) -> Sound: ...
+    def from_midi(
+        fp: bytes,
+        sound_fonts_path: str=SOUND_FONTS_PATH,
+        dtype: str="float32",
+        volume: float=1.0,
+        hostapi: Optional[str]=None,
+        device_id: Optional[int]=None,
+        is_temp: Optional[bool]=None,
+        **kwargs
+    ) -> Sound: ...
     @overload
     @staticmethod
-    def from_midi(fp: BufferedReader, **kwargs) -> Sound: ...
+    def from_midi(
+        fp: BufferedReader,
+        sound_fonts_path: str=SOUND_FONTS_PATH,
+        dtype: str="float32",
+        volume: float=1.0,
+        hostapi: Optional[str]=None,
+        device_id: Optional[int]=None,
+        is_temp: Optional[bool]=None,
+        **kwargs
+    ) -> Sound: ...
     @overload
     @staticmethod
-    def from_midi(fp: BytesIO, **kwargs) -> Sound: ...
+    def from_midi(
+        fp: BytesIO,
+        sound_fonts_path: str=SOUND_FONTS_PATH,
+        dtype: str="float32",
+        volume: float=1.0,
+        hostapi: Optional[str]=None,
+        device_id: Optional[int]=None,
+        is_temp: Optional[bool]=None,
+        **kwargs
+    ) -> Sound: ...
 
+    # * Vars
     @property
     def playing(self) -> bool: ...
     @property

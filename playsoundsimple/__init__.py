@@ -1,1 +1,4 @@
-from .player import Sound, SoundFP, get_devices, is_midi_file
+from .player import (
+    Sound, SoundFP,
+    is_midi_file, search_device, get_hostapis
+)

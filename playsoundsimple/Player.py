@@ -4,35 +4,34 @@ import time
 import subprocess
 from threading import Thread
 from tempfile import mkstemp
-from dataclasses import dataclass
 # > Sound Works
 import sounddevice as sd
 import soundfile as sf
 from mutagen import File, FileType
 # > Typing
-from typing import Optional, Union, Dict, Any, Tuple
+from typing import Optional, Union, Dict, Any, Tuple, List, Iterable
 # > Local Imports
-from . import units
-from . import exceptions
+from .exceptions import *
+from .units import SOUND_FONTS_PATH, FLUID_SYNTH_PATH
+
 
 # ! Other
-@dataclass
-class Device:
-    name: str
-    device_id: int
-    samplerate: float
-
 SoundFP = Union[str, bytes, io.BufferedReader, io.BytesIO]
 
 # ! Functions
-def get_devices():
-    dl = []
-    for idx, i in enumerate(list(sd.query_devices())):
-        if i["max_output_channels"] > 0:
-            dl.append(
-                Device(i['name'], idx, i["default_samplerate"])
-            )
-    return dl
+def get_hostapis() -> List[Dict[str, Any]]:
+    l = []
+    hosts: Iterable[Dict[str, Any]] = list(sd.query_hostapis())
+    for i in hosts:
+        i["name"] = i["name"].lower().replace(" ", "_")
+        l.append(i)
+    return l
+
+def search_device(hostapi: str) -> int:
+    for i in get_hostapis():
+        if i["name"] == hostapi:
+            return i["default_output_device"]
+    raise SoundDeviceSearchError()
 
 def get_icon_data(mutagen_class: FileType) -> Optional[bytes]:
     try: return mutagen_class["APIC:"].data
@@ -65,18 +64,30 @@ def get_sound_filepath(fp: SoundFP, *, filetype: str=".bin") -> Tuple[Optional[s
 
 # ! Classes
 class Sound:
-    def __init__(self, fp: SoundFP, **kwargs) -> None:
+    def __init__(
+        self,
+        fp: SoundFP,
+        dtype: str="float32",
+        volume: float=1.0,
+        hostapi: Optional[str]=None,
+        device_id: Optional[int]=None,
+        is_temp: Optional[bool]=None,
+        **kwargs
+    ) -> None:
         self._SOUND_PATH, self._TEMPED = get_sound_filepath(fp)
-        self._TEMPED = kwargs.get("is_temp", self._TEMPED)
+        self._TEMPED = is_temp or self._TEMPED
         
-        if self._SOUND_PATH is None: raise exceptions.FileTypeError(fp)
+        if self._SOUND_PATH is None: raise FileTypeError(fp)
         
         self._SOUND = sf.SoundFile(fp)
         self._MUTAGEN_FILE: FileType = File(os.path.abspath(self._SOUND.name))
         
-        self._DID: Optional[int] = kwargs.get("device_id", None)
-        self._DT: str = kwargs.get("dtype", "float32")
-        self._V: float = kwargs.get("volume", 1.0)
+        self._DID: Optional[int] = device_id
+        if (self._DID is None) and (hostapi is not None):
+            self._DID = search_device(hostapi)
+        
+        self._DT: str = dtype
+        self._V: float = volume
         self._POS: int = 0
         self._P = False
         self._PE = False
@@ -144,13 +155,16 @@ class Sound:
             except: pass
 
     @staticmethod
-    def from_midi(fp: SoundFP, **kwargs):
+    def from_midi(
+        fp: SoundFP,
+        sound_fonts_path: str=SOUND_FONTS_PATH,
+        **kwargs
+    ):
         path, is_temp = get_sound_filepath(fp, filetype=".midi")
+        if path is None: raise FileTypeError(fp)
+        npath = mkstemp(suffix=".wav")[1]
         
-        if path is None: raise exceptions.FileTypeError(fp)
-        
-        path_sound_fonts, npath = kwargs.get("path_sound_fonts", units.SOUND_FONTS_PATH), mkstemp(suffix=".wav")[1]
-        subprocess.check_output([units.FLUID_SYNTH_PATH, "-ni", path_sound_fonts, path, "-F", npath])
+        subprocess.check_call([FLUID_SYNTH_PATH, "-ni", sound_fonts_path, path, "-F", npath, "-q"])
         
         if is_temp:
             try: os.remove(path)
