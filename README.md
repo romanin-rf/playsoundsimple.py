@@ -13,7 +13,6 @@ This means if you have a MacOS or Linux system you will need to manually install
 
 ## More
 ```python
-import time
 import playsoundsimple as pss
 
 s = pss.Sound("main.wav")
