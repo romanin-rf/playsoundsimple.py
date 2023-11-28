@@ -1,6 +1,6 @@
 # playsoundsimple.py
 ## Description
-Library for working with sound files of the format: `MP3`, `WAV`, `OGG`, `MIDI`.
+Library for working with sound files of the format: `MP3`, `WAV`, `OGG`,`FLAC`, `MIDI`.
 
 ## Installation
 ```
@@ -34,13 +34,11 @@ In order to play MIDI files you need to install FluidSynth:
         ```
 
 ## More
-```python
+```example
 import playsoundsimple as pss
 
 s = pss.Sound("main.wav")
-
-s.play(1)
-
+s.play()
 s.wait()
 ```
 
