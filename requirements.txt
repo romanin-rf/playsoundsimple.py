@@ -1,4 +1,0 @@
-sounddevice
-soundfile
-mutagen
-numpy
