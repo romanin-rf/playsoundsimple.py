@@ -33,8 +33,6 @@ In order to play MIDI files you need to install FluidSynth:
         sudo port install fluidsynth
         ```
 
-This means if you have a MacOS or Linux system you will need to manually install the [FluidSynth](https://github.com/FluidSynth/fluidsynth/wiki/Download) package.
-
 ## More
 ```python
 import playsoundsimple as pss
