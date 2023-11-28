@@ -251,6 +251,14 @@ class Sound():
             self.__cur_frame = round(value * self.__samplerate)
             self.sf.seek(self.__cur_frame)
     
+    def pause(self) -> None:
+        if not self.__paused and self.__playing:
+            self.__paused = True
+    
+    def unpause(self) -> None:
+        if self.__paused and self.__playing:
+            self.__paused = False
+    
     def play(self, mode: int=1) -> None:
         if not self.__playing:
             self.__playing = True
