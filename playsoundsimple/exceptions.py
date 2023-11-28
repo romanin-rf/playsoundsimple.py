@@ -10,4 +10,22 @@ class SoundDeviceSearchError(Exception):
     def __init__(self) -> None:
         """DeviceID with current settings could not be found."""
         super().__init__()
-        self.args = (f"DeviceID with current settings could not be found.",)
+        self.args = ("DeviceID with current settings could not be found.",)
+
+class FluidSynthNotFoundError(Exception):
+    """Indicates the absence of FluidSynth."""
+    def __init__(self) -> None:
+        """Called when there is no FluidSynth program."""
+        super().__init__()
+        self.args = (
+            "The 'fluidsynth' command was not found in the PATH variable.",
+            "Please install the FluidSynth program and add PATH to the environment variable.",
+            "You can install FluidSynth by following the link: https://github.com/FluidSynth/fluidsynth/wiki/Download"
+        )
+
+class FluidSynthRuntimeError(Exception):
+    """Indicates incorrect operation of FluidSynth."""
+    def __init__(self) -> None:
+        """Called when FluidSynth has finished its work with bad code."""
+        super().__init__()
+        self.args = (f"FluidSynth finished its work incorrectly.",)

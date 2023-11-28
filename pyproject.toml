@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "playsoundsimple-py"
+version = "0.8.0"
+description = "A simple library for playing sound files."
+authors = ["Romanin <semina054@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "playsoundsimple"}]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.12"
+sounddevice = ">=0.4.6"
+soundfile = ">=0.12"
+numpy = ">=1.25"
+mutagen = ">=1.47"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -8,7 +8,31 @@ pip install playsoundsimple.py
 ```
 
 ### About MIDI support
-On Windows, the `MIDI` processing package is the default.
+In order to play MIDI files you need to install FluidSynth:
+- **Windows**: https://github.com/FluidSynth/fluidsynth/releases
+- **Linux**:
+    - **Ubuntu/Debian**:
+        ```shell
+        sudo apt-get install fluidsynth
+        ```
+    - **Arch Linux**:
+        ```shell
+        sudo pacman -S fluidsynth
+        ```
+- **MacOS**
+    - With [Fink](http://www.finkproject.org/):
+        ```shell
+        fink install fluidsynth
+        ```
+    - With [Homebrew](https://brew.sh/):
+        ```shell
+        brew install fluidsynth
+        ```
+    - With [MacPorts](http://www.macports.org/):
+        ```shell
+        sudo port install fluidsynth
+        ```
+
 This means if you have a MacOS or Linux system you will need to manually install the [FluidSynth](https://github.com/FluidSynth/fluidsynth/wiki/Download) package.
 
 ## More
