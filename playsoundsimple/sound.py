@@ -1,6 +1,5 @@
 import os
 import time
-import sounddevice as sd
 from threading import Thread
 from tempfile import mkstemp
 from soundfile import SoundFile
@@ -8,11 +7,12 @@ from mutagen import File, FileType
 from io import BytesIO, BufferedReader, BufferedRandom
 from pathlib import Path, PosixPath, PurePath, PurePosixPath, PureWindowsPath, WindowsPath
 # > Typing
-from typing import Union, Optional, Tuple, List, Dict, Iterable, Any
+from typing import Type, Union, Optional, Tuple, Dict
 # > Local Imports
 from . import fluidsynth
 from .units import DEFAULT_SOUND_FONTS_PATH
-from .exceptions import SoundDeviceSearchError, FileTypeError, FluidSynthNotFoundError, FluidSynthRuntimeError
+from .streamers import StreamerBase, DEFAULT_STREAMER
+from .exceptions import FileTypeError, FluidSynthNotFoundError, FluidSynthRuntimeError, DefaultStreamerImportError
 
 # ! Types
 FPType = Union[str, Path, bytes, BytesIO, BufferedReader, BufferedRandom]
@@ -72,21 +72,6 @@ def getfp(fp: FPType, filetype: str=".bin") -> Tuple[str, bool]:
     else:
         raise TypeError(f"The fp argument cannot be: {type(fp)}")
 
-# ! SoundDevice Functions
-def get_hostapis() -> List[Dict[str, Any]]:
-    l = []
-    hosts: Iterable[Dict[str, Any]] = list(sd.query_hostapis())
-    for i in hosts:
-        i["name"] = i["name"].lower().replace(" ", "_")
-        l.append(i)
-    return l
-
-def search_device(hostapi: str) -> int:
-    for i in get_hostapis():
-        if i["name"] == hostapi:
-            return i["default_output_device"]
-    raise SoundDeviceSearchError()
-
 # ! Sound Functions
 def get_icon_data(mutagen_class: MutagenFile) -> Optional[bytes]:
     try:
@@ -108,11 +93,13 @@ class Sound():
         fp: FPType,
         dtype: str="float32",
         volume: float=1.0,
-        hostapi: Optional[str]=None,
-        device_id: Optional[int]=None,
-        is_temp: Optional[bool]=None,
+        is_temp: bool=False,
+        streamer: Optional[Type[StreamerBase]]=DEFAULT_STREAMER,
         **kwargs
     ) -> None:
+        if streamer is None:
+            raise DefaultStreamerImportError()
+        self.kwargs = kwargs
         self.__name, self.sf, self.mf, self.is_temp = opener(fp)
         self.is_temp = self.is_temp or is_temp
         # ! Sound Settings
@@ -126,10 +113,13 @@ class Sound():
         except:
             self.__bitrate: int = 0
         self.__bit_depth: int = round(self.__bitrate / (self.__samplerate * self.__channels))
-        self.__device_id = device_id
-        if (self.__device_id is None) and (hostapi is not None):
-            self.__device_id = search_device(hostapi)
         # ! Sound Runtime
+        self.__streamer = streamer(
+            self.__samplerate,
+            self.__channels,
+            dtype=self.__dtype,
+            device=self.kwargs.get("device")
+        )
         self.__volume = volume
         self.__cur_frame: int = 0
         self.__playing = False
@@ -138,6 +128,16 @@ class Sound():
         # ! Sound Metadata
         self.__icon_data = get_icon_data(self.mf)
         self.__metadata: Dict[str, str] = self.sf.copy_metadata()
+    
+    def __del__(self) -> None:
+        if not self.sf.closed:
+            self.sf.close()
+        if self.is_temp:
+            if self.__name is not None:
+                try:
+                    os.remove(self.__name)
+                except:
+                    pass
     
     # ! Propertyes
     @property
@@ -163,11 +163,17 @@ class Sound():
     @property
     def album(self) -> Optional[str]: return self.__metadata.get("album", None)
     @property
+    def year(self) -> Optional[str]: return self.__metadata.get("date", None)
+    @property
     def icon_data(self) -> Optional[bytes]: return self.__icon_data
     
     # ! Variants
     @staticmethod
-    def from_midi(fp: FPType, sound_fonts_path: str=DEFAULT_SOUND_FONTS_PATH, **kwargs):
+    def from_midi(
+        fp: FPType,
+        sound_fonts_path: str=DEFAULT_SOUND_FONTS_PATH,
+        **kwargs
+    ) -> None:
         if fluidsynth.is_exists_fluidsynth():
             path, is_temp = getfp(fp, ".midi")
             if not is_midi_file(path):
@@ -176,7 +182,7 @@ class Sound():
             if fluidsynth.midi2wave(path, npath, sound_fonts_path):
                 if is_temp:
                     os.remove(path)
-                return Sound(npath, **kwargs)
+                return Sound(npath, is_temp=True, **kwargs)
             else:
                 raise FluidSynthRuntimeError()
         else:
@@ -216,25 +222,21 @@ class Sound():
     
     # ! Streaming
     def __streaming__(self, mode: int) -> None:
-        with sd.OutputStream(
-            self.__samplerate,
-            dtype=self.__dtype,
-            device=self.__device_id,
-            channels=self.__channels
-        ) as stream:
-            self.sf.seek(self.__cur_frame)
-            while (mode != 0) and (self.__playing):
-                while self.__playing:
-                    self._check_pause()
-                    if (length:=len(data:=self.sf.read(self.__supply, self.__dtype))) != 0:
-                        stream.write(data * self.__volume)
-                        self.__cur_frame += length
-                    else:
-                        break
-                self.sf.seek(0)
-                self.__cur_frame, mode = 0, mode-1
+        self.__streamer.start()
+        self.sf.seek(self.__cur_frame)
+        while (mode != 0) and (self.__playing):
+            while self.__playing:
+                self._check_pause()
+                if (length:=len(data:=self.sf.read(self.__supply, self.__dtype))) != 0:
+                    self.__streamer.send(data * self.__volume)
+                    self.__cur_frame += length
+                else:
+                    break
             self.sf.seek(0)
-            self.__cur_frame, self.__playing, self.__paused = 0, False, False
+            self.__cur_frame, mode = 0, mode-1
+        self.sf.seek(0)
+        self.__cur_frame, self.__playing, self.__paused = 0, False, False
+        self.__streamer.stop()
     
     # ! Control Functions
     def get_volume(self) -> float:

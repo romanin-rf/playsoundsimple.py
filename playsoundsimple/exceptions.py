@@ -5,13 +5,6 @@ class FileTypeError(Exception):
         super().__init__()
         self.args = (f"The 'fp' argument cannot be {repr(fp.__class__.__name__)}",)
 
-class SoundDeviceSearchError(Exception):
-    """Indicates an error when searching for the Device ID to output."""
-    def __init__(self) -> None:
-        """DeviceID with current settings could not be found."""
-        super().__init__()
-        self.args = ("DeviceID with current settings could not be found.",)
-
 class FluidSynthNotFoundError(Exception):
     """Indicates the absence of FluidSynth."""
     def __init__(self) -> None:
@@ -29,3 +22,10 @@ class FluidSynthRuntimeError(Exception):
         """Called when FluidSynth has finished its work with bad code."""
         super().__init__()
         self.args = (f"FluidSynth finished its work incorrectly.",)
+
+class DefaultStreamerImportError(Exception):
+    """Indicates that the default streamer was received unsuccessfully."""
+    def __init__(self) -> None:
+        """Called if the `DefaultStreamer` variable is `None`."""
+        super().__init__()
+        self.args = (f"It was not possible to get the default streamer, perhaps it needs libraries that are not available on this device.",)

@@ -1,11 +1,12 @@
-from soundfile import SoundFile
-from mutagen import FileType
-from io import BytesIO, BufferedReader, BufferedRandom
 from pathlib import Path
+from mutagen import FileType
+from soundfile import SoundFile
+from io import BytesIO, BufferedReader, BufferedRandom
 # > Typing
-from typing import Union, Optional, Tuple, List, Dict, Any
+from typing import Type, Union, Optional, Tuple, List, Dict, Any
 # > Local Imports
 from .units import DEFAULT_SOUND_FONTS_PATH
+from .streamers import DEFAULT_STREAMER, StreamerBase
 
 # ! Types
 FPType = Union[str, Path, bytes, BytesIO, BufferedReader, BufferedRandom]
@@ -14,10 +15,6 @@ MutagenFile = FileType
 # ! Hidden Functions For Class
 def opener(fp: FPType) -> Tuple[Optional[str], SoundFile, MutagenFile, bool]: ...
 def getfp(fp: FPType, filetype: str=".bin") -> Tuple[str, bool]: ...
-
-# ! SoundDevice Functions
-def get_hostapis() -> List[Dict[str, Any]]: ...
-def search_device(hostapi: str) -> int: ...
 
 # ! Sound Functions
 def get_icon_data(mutagen_class: MutagenFile) -> Optional[bytes]: ...
@@ -30,9 +27,8 @@ class Sound():
         fp: FPType,
         dtype: str="float32",
         volume: float=1.0,
-        hostapi: Optional[str]=None,
-        device_id: Optional[int]=None,
-        is_temp: Optional[bool]=None,
+        streamer: Optional[Type[StreamerBase]]=DEFAULT_STREAMER,
+        is_temp: bool=False,
         **kwargs
     ) -> None: ...
     
@@ -59,6 +55,8 @@ class Sound():
     def artist(self) -> Optional[str]: ...
     @property
     def album(self) -> Optional[str]: ...
+    @property
+    def year(self) -> Optional[str]: ...
     @property
     def icon_data(self) -> Optional[bytes]: ...
     
