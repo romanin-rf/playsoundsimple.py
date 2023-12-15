@@ -227,7 +227,9 @@ class Sound():
         while (mode != 0) and (self.__playing):
             while self.__playing:
                 self._check_pause()
-                if (length:=len(data:=self.sf.read(self.__supply, self.__dtype))) != 0:
+                data = self.sf.read(self.__supply, self.__dtype)
+                length = len(data)
+                if length != 0:
                     self.__streamer.send(data * self.__volume)
                     self.__cur_frame += length
                 else:

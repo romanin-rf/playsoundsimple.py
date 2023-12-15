@@ -3,7 +3,7 @@ from mutagen import FileType
 from soundfile import SoundFile
 from io import BytesIO, BufferedReader, BufferedRandom
 # > Typing
-from typing import Type, Union, Optional, Tuple, List, Dict, Any
+from typing import Type, Union, Optional, Tuple
 # > Local Imports
 from .units import DEFAULT_SOUND_FONTS_PATH
 from .streamers import DEFAULT_STREAMER, StreamerBase
