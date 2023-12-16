@@ -120,6 +120,7 @@ class Sound():
             dtype=self.__dtype,
             device=self.kwargs.get("device")
         )
+        self.__thread = None
         self.__volume = volume
         self.__cur_frame: int = 0
         self.__playing = False
@@ -237,8 +238,10 @@ class Sound():
             self.sf.seek(0)
             self.__cur_frame, mode = 0, mode-1
         self.sf.seek(0)
-        self.__cur_frame, self.__playing, self.__paused = 0, False, False
+        self.__cur_frame = 0
         self.__streamer.stop()
+        self.__playing = False
+        self.__paused = False
     
     # ! Control Functions
     def get_volume(self) -> float:
@@ -266,11 +269,14 @@ class Sound():
     def play(self, mode: int=1) -> None:
         if not self.__playing:
             self.__playing = True
-            Thread(target=self.__streaming__, args=(mode,), daemon=True).start()
+            self.__thread = Thread(target=self.__streaming__, args=(mode,))
+            self.__thread.start()
     
     def stop(self) -> None:
         if self.__playing:
             self.__playing, self.__paused = False, False
+            if self.__thread is not None:
+                self.__thread.join()
     
     def wait(self) -> None:
         while self.__playing:

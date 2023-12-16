@@ -5,14 +5,10 @@ from .base import StreamerBase
 
 # ! Main Class
 class SoundDeviceStreamer(StreamerBase[ndarray]):
-    def __stream__(self) -> None:
-        with sd.OutputStream(
-            samplerate=self.samplerate,
-            channels=self.channels,
-            **self.kwargs
-        ) as stream:
-            while self.running:
-                stream.write(self.queue.get())
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.stream = None
+        self.running = False
     
     @staticmethod
     def get_hostapis() -> List[Dict[str, Any]]:
@@ -29,3 +25,26 @@ class SoundDeviceStreamer(StreamerBase[ndarray]):
             if i["name"] == hostapi:
                 return i["default_output_device"]
         raise RuntimeError()
+    
+    # ! Main Methods
+    def start(self) -> None:
+        if not self.running:
+            self.running = True
+            self.stream = sd.OutputStream(
+                samplerate=self.samplerate,
+                channels=self.channels,
+                dtype=self.kwargs.get('dtype'),
+                device=self.kwargs.get('device')
+            )
+            self.stream.start()
+    
+    def stop(self) -> None:
+        if self.running:
+            self.running = False
+            self.stream.stop()
+            self.stream.close()
+            self.stream = None
+    
+    def send(self, data: ndarray) -> None:
+        if self.running:
+            self.stream.write(data)
